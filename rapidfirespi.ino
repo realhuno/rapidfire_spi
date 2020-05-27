@@ -52,6 +52,18 @@ bitBangData(83); // data transmission   Let Buzzer Beep every second
 bitBangData(62); // data transmission
 bitBangData(00); // data transmission
 bitBangData(145); // data transmission
+  
+  
+//Usertext OSD
+//bitBangData(84); // data transmission  
+//bitBangData(61); // data transmission
+//bitBangData(5); // data transmission
+//bitBangData(138); // data transmission
+//bitBangData(72); // data transmission
+//bitBangData(101); // data transmission
+//bitBangData(108); // data transmission
+//bitBangData(108); // data transmission
+//bitBangData(111); // data transmission
 delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 delay(1000);            //bissal länger warten
