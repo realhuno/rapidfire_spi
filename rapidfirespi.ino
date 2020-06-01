@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <esp_wifi.h>
+#include <PubSubClient.h>
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
 
@@ -11,7 +12,6 @@
 
 //WEB
 #include <WebServer.h>
- 
 #include "index.h"  //Web page header file
  
 WebServer server(80);
@@ -20,21 +20,31 @@ WebServer server(80);
 
 #define WIFI_AP_NAME "Chorus32 LapTimer"
 
+#define mqtt_rx "rx/cv1/" //rapidfire ID for mqtt
 
 
-WiFiClient client;
+
 WiFiMulti wifiMulti;
+// Add your MQTT Broker IP address, example:
+//const char* mqtt_server = "192.168.1.144";
+const char* mqtt_server = "10.0.0.81";
 
-#define SPI_DATA_PIN 19
-#define SPI_SS_PIN 5
-#define SPI_CLOCK_PIN 18
+WiFiClient espClient;
+PubSubClient client(espClient);
+//#define SPI_DATA_PIN 19   
+//#define SPI_SS_PIN 5
+//#define SPI_CLOCK_PIN 18
+
+#define SPI_DATA_PIN 12
+#define SPI_SS_PIN 13
+#define SPI_CLOCK_PIN 15
 
 #define delaytime 70
 #define MAX_BUF 1500
 char buf[MAX_BUF];
 uint32_t buf_pos = 0;
 String global;
-
+int mqtt=0;
 //===============================================================
 // This routine is executed when you open its IP in browser
 //===============================================================
@@ -64,10 +74,30 @@ void handleLED() {
   if(t_state.charAt(0) == 'C') {
   channel(t_state.charAt(2));
   }  
- 
+  if(t_state.charAt(0) == 'B') {
+  band(t_state.charAt(2));
+  }  
+  if(t_state.charAt(0) == 'T') {
+  text(t_state);
+  }  
  Serial1.println(t_state);
  Serial.println(t_state);
  global=t_state;
+ server.send(200, "text/plane", t_state); //Send web page
+
+}
+
+void led() {
+
+ String t_state = server.arg("led"); //Refer  xhttp.open("GET", "setLED?LEDstate="+led, true);
+ if(t_state=="on"){
+ pinMode(4,OUTPUT);
+ digitalWrite(4,HIGH);
+ }else{
+   pinMode(4,OUTPUT);
+ digitalWrite(4,LOW);
+ }
+
  server.send(200, "text/plane", t_state); //Send web page
 
 }
@@ -87,31 +117,7 @@ void handleTime() {
 
  //server.send(200, "text/plane", t_state); //Send web page
 }
-void chorus_connect() {
-  if(WiFi.isConnected()) {
-        
 
-    if(WiFi.SSID()=="Chorus32 LapTimer"){
-           if(client.connect("192.168.4.1", 9000)) {
-      Serial.println("Connected to chorus via tcp 192.168.4.1");
-    }
-    }
-
-
-    if(WiFi.SSID()=="Laptimer"){
-           if(client.connect("192.168.0.141", 9000)) {
-      Serial.println("Connected to chorus via tcp 192.168.0.141");
-    }
-    }
-
-    if(WiFi.SSID()=="A1-7FB051"){
-           if(client.connect("10.0.0.50", 9000)) {
-      Serial.println("Connected to chorus via tcp 10.0.0.50");
-    }
-    }
-
-  }
-}
 
 byte bitBangData(byte _send)  // This function transmit the data via bitbanging
 {
@@ -132,7 +138,76 @@ byte bitBangData(byte _send)  // This function transmit the data via bitbanging
   } 
  
 }
+void callback(char* topic, byte* message, unsigned int length) {
+   if(mqtt==1){
+ 
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  String line;
+  
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)message[i]);
+    line += (char)message[i];
+  }
+  Serial.println("Topic:");
 
+   Serial.println(String(topic));
+   if (String(topic) == "rx/cv1/cmd_esp_all") {
+  Serial.println("MQTT request from Rotorhazard");
+   client.publish("rxcn/1", "1");
+
+
+
+     if(line.charAt(0) == 'L') {
+     if(line.charAt(2)=='0'){
+     pinMode(4,OUTPUT);
+     digitalWrite(4,HIGH);
+     }
+     if(line.charAt(2)=='1'){
+     pinMode(4,OUTPUT);
+     digitalWrite(4,HIGH);
+     }
+    
+  } 
+
+  }
+ 
+ 
+
+ 
+  // Feel free to add more if statements to control more GPIOs with MQTT
+
+  // If a message is received on the topic esp32/output, you check if the message is either "on" or "off". 
+  // Changes the output state according to the message
+  if (String(topic) == "esp32/output") {
+    
+  if(line.charAt(0) == 'S') {
+  buzzer();
+  Serial.println("BUZZER");
+  }
+  if(line.charAt(0) == 'O') {
+  osdmode(line.charAt(2));
+    Serial.println("OSD");
+
+  }
+  if(line.charAt(0) == 'C') {
+  channel(line.charAt(2));
+    Serial.println("Channel");
+
+  }     
+  if(line.charAt(0) == 'B') {
+  band(line.charAt(2));
+    Serial.println("Band");
+
+  } 
+  if(line.charAt(0) == 'T') {
+      Serial.println("Text");
+  text(line);
+  } 
+}
+  }
+}
 void setup(void) {
 
   Serial.begin(115200);
@@ -141,7 +216,7 @@ void setup(void) {
   
   wifiMulti.addAP("Chorus32 LapTimer", "");
     wifiMulti.addAP("Laptimer", "laptimer");
-
+    wifiMulti.addAP("A1-7FB051", "hainz2015");
 
     Serial.println("Connecting Wifi...");
     if(wifiMulti.run() == WL_CONNECTED) {
@@ -193,6 +268,8 @@ void setup(void) {
   server.on("/readADC", handleADC);//To get update of ADC Value only
   server.on("/setLED", handleLED);
   server.on("/setTime", handleTime);
+ server.on("/reconnect", reconnect);
+  server.on("/led", led);
  
   server.begin();                  //Start server
   Serial.println("HTTP server started");
@@ -223,6 +300,8 @@ void setup(void) {
   delay(1000); //Wait again 
 MDNS.begin("radio0");
 MDNS.addService("http", "tcp", 80);
+// client.setServer(mqtt_server, 1883);
+//  client.setCallback(callback);
 }
 // Not working.... another methode...
 void rapidsend(String text){
@@ -277,7 +356,7 @@ delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 }
 
-void helloworld(){
+void text(String text){
 digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);  
 bitBangData(84); // data transmission   OSD MODE
@@ -292,6 +371,29 @@ bitBangData(111); // data transmission
 delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 }
+
+void text_probleme(String text){
+int len = strlen(text.c_str());
+digitalWrite(SPI_SS_PIN, LOW);
+delayMicroseconds(delaytime);  
+Serial.print("_");
+Serial.print(145+(len-2));
+Serial.println("_");
+bitBangData(84); // data transmission   OSD MODE
+bitBangData(61); // data transmission
+bitBangData(len-2); // data transmission
+bitBangData(145+(len-2)); // data transmission 138
+   for(int i=2; i<len; i++){
+   Serial.println(int(text.charAt(i)));
+   bitBangData(int(text.charAt(i)));
+
+
+ }
+delayMicroseconds(delaytime);
+digitalWrite(SPI_SS_PIN, HIGH);
+}  
+
+
 void osdmode(int i){
   digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);
@@ -327,6 +429,51 @@ Serial.println(i-48);
 //3=lock+standard
 //4=internal
 }
+
+
+void band(int i){
+  digitalWrite(SPI_SS_PIN, LOW);
+delayMicroseconds(delaytime);
+bitBangData(66); // data transmission
+bitBangData(61); // data transmission
+bitBangData(1); // data transmission
+bitBangData(128+(i-48)); // data transmission  145 oder so pal // 147  146      141
+bitBangData(i-48); // data transmission  3               //     6    5    0
+delayMicroseconds(delaytime);
+digitalWrite(SPI_SS_PIN, HIGH);
+Serial.println(i-48);
+//0=clear
+//1=lock
+//2=default
+//3=lock+standard
+//4=internal
+}
+void reconnect() {
+  // Loop until we're reconnected
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+  
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("ESP8266Client")) {
+      mqtt=1;
+      Serial.println("connected");
+      // Subscribe
+      //client.subscribe("esp32/output");
+      client.subscribe("rx/cv1/cmd_esp_all");
+      global="MQTT Connected";
+ 
+    } else {
+      mqtt=0;
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      global="MQTT not Connected";
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  
+}
 void loop(void) {
   ArduinoOTA.handle();
 
@@ -338,11 +485,9 @@ void loop(void) {
     }
 
 
-  while(client.connected() && client.available()) {
-    // Doesn't include the \n itself
-    String line = client.readStringUntil('\n');
 
 
+/*
   if(line.charAt(0) == 'S') {
   buzzer();
   }
@@ -352,7 +497,16 @@ void loop(void) {
   if(line.charAt(0) == 'C') {
   channel(line.charAt(2));
   }     
-  }
+  if(line.charAt(0) == 'B') {
+  band(line.charAt(2));
+  } 
+  if(line.charAt(0) == 'T') {
+  text(line);
+
+  
+  }  
+  */
+  
     IPAddress myip = WiFi.localIP();
     
 while(Serial.available()) {
@@ -374,21 +528,25 @@ while(Serial.available()) {
      }
      if(buf[0] == 'C') {
      channel(buf[2]);
-     }     
+     }  
+     if(buf[0] == 'B') {
+     band(buf[2]);
+     }    
+     if(buf[0] == 'T') {
+     text(buf);
+     }  
      buf_pos = 0;
      memset(buf, 0, 1500 * sizeof(char));
     }
   }
 
     
-  if(!client.connected()) {
-    delay(1000);
-    Serial.println("Lost tcp connection! Trying to reconnect");
-    Serial.println(WiFi.localIP());
-    Serial.println(WiFi.SSID());
-    chorus_connect();
+  if (!client.connected()) {
+    //reconnect();
   }
-
+  if(mqtt=1){
+  client.loop();
+  }
 
 
 
