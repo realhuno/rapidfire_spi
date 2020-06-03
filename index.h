@@ -25,6 +25,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <br>
    <button type="button" onclick="sendesp32('S>')">Beep</button>
    <button type="button" onclick="sendesp32('T=Hello')">Hello</button>
+   <input type="text" id="ip" value="10.0.0.81">
    <button type="button" onclick="reconnect('true')">MQTT Connect!!</button>
    <button type="button" onclick="led('on')">LED ON!</button>
    <button type="button" onclick="led('off')">LED OFF!</button>
@@ -39,8 +40,10 @@ const char MAIN_page[] PROGMEM = R"=====(
    <button type="button" onclick="sendesp32('O=7')">OSD Mode7</button>
    <button type="button" onclick="sendesp32('O=8')">OSD Mode8</button>
    <button type="button" onclick="sendesp32('O=9')">OSD Mode9</button>
-  <!--<input type="text" id="valuein">-->
-   <!-- <button type="button" onclick="sendesp32(valuein.value)">Send</button><BR>-->
+      <br>
+   <button type="button" onclick="sendesp32('D=0')">Rapidfire1</button>
+   <button type="button" onclick="sendesp32('D=1')">Rapidfire2</button>
+   <button type="button" onclick="sendesp32('D=2')">Legacy</button>
 </div>
 
 <div>
@@ -50,29 +53,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 </div>
 <script>
 
-function dec2hex(n){
-    n = parseInt(n); var c = 'ABCDEF';
-    var b = n / 16; var r = n % 16; b = b-(r/16); 
-    b = ((b>=0) && (b<=9)) ? b : c.charAt(b-10);    
-    return ((r>=0) && (r<=9)) ? b+''+r : b+''+c.charAt(r-10);
-}
 
-function sendData(led) {
- 
-
-  led=Number(led).toString(16);
-  console.log(led);
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      document.getElementById("LEDState").innerHTML =
-      this.responseText;
-    }
-  };
-
-  xhttp.open("GET", "setLED?LEDstate=S1L01000"+led, true);
-  xhttp.send();
-}
 
 function sendesp32(led) {
  
@@ -104,8 +85,8 @@ function reconnect(led) {
       this.responseText;
     }
   };
-
-  xhttp.open("GET", "reconnect", true);
+let msg = document.querySelector("#ip").value;
+  xhttp.open("GET", "reconnect?ip="+msg, true);
   xhttp.send();
 }
 
