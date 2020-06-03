@@ -4,7 +4,7 @@
 #include <PubSubClient.h>
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
-
+#include <ArduinoJson.h>
 //OTA
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
@@ -22,7 +22,7 @@ WebServer server(80);
 
 #define mqtt_rx "rx/cv1/" //rapidfire ID for mqtt
 
-
+int heartbeat=0;
 
 WiFiMulti wifiMulti;
 // Add your MQTT Broker IP address, example:
@@ -35,9 +35,9 @@ PubSubClient client(espClient);
 //#define SPI_SS_PIN 5
 //#define SPI_CLOCK_PIN 18
 
-#define SPI_DATA_PIN 12
-#define SPI_SS_PIN 13
-#define SPI_CLOCK_PIN 15
+#define SPI_DATA_PIN 13 //12 
+#define SPI_SS_PIN 15 // 13
+#define SPI_CLOCK_PIN 12 //15
 
 #define delaytime 70
 #define MAX_BUF 1500
@@ -79,6 +79,9 @@ void handleLED() {
   }  
   if(t_state.charAt(0) == 'T') {
   text(t_state);
+  }  
+  if(t_state.charAt(0) == 'D') {
+   rfmodes(t_state.charAt(2));
   }  
  Serial1.println(t_state);
  Serial.println(t_state);
@@ -155,14 +158,14 @@ void callback(char* topic, byte* message, unsigned int length) {
    Serial.println(String(topic));
    if (String(topic) == "rx/cv1/cmd_esp_all") {
   Serial.println("MQTT request from Rotorhazard");
-   client.publish("rxcn/1", "1");
+   
 
 
 
      if(line.charAt(0) == 'L') {
      if(line.charAt(2)=='0'){
      pinMode(4,OUTPUT);
-     digitalWrite(4,HIGH);
+     digitalWrite(4,LOW);
      }
      if(line.charAt(2)=='1'){
      pinMode(4,OUTPUT);
@@ -209,7 +212,7 @@ void callback(char* topic, byte* message, unsigned int length) {
   }
 }
 void setup(void) {
-
+  pinMode(33,OUTPUT);
   Serial.begin(115200);
 
   //WiFi.begin(WIFI_AP_NAME);
@@ -232,7 +235,7 @@ void setup(void) {
 
 
 
-  delay(500);
+  delay(5000);
 
   memset(buf, 0, 1500 * sizeof(char));
   //OTA
@@ -431,6 +434,23 @@ Serial.println(i-48);
 }
 
 
+void rfmodes(int i){
+  digitalWrite(SPI_SS_PIN, LOW);
+delayMicroseconds(delaytime);
+bitBangData(68); // data transmission
+bitBangData(61); // data transmission
+bitBangData(1); // data transmission
+bitBangData(130+(i-48)); // data transmission  145 oder so pal // 147  146      141
+bitBangData(i-48); // data transmission  3               //     6    5    0
+delayMicroseconds(delaytime);
+digitalWrite(SPI_SS_PIN, HIGH);
+Serial.println(i-48);
+//0=rapidfire1
+//1=rapidfire2
+//2=legacy
+}
+
+
 void band(int i){
   digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);
@@ -450,18 +470,55 @@ Serial.println(i-48);
 }
 void reconnect() {
   // Loop until we're reconnected
-  client.setServer(mqtt_server, 1883);
+ 
+   String ipa=server.arg("ip");
+ 
+  client.setServer(ipa.c_str(), 1883);
   client.setCallback(callback);
   
     Serial.print("Attempting MQTT connection...");
+    Serial.println(ipa.c_str());
     // Attempt to connect
     if (client.connect("ESP8266Client")) {
       mqtt=1;
       Serial.println("connected");
       // Subscribe
       //client.subscribe("esp32/output");
-      client.subscribe("rx/cv1/cmd_esp_all");
+      //client.subscribe("rx/cv1/cmd_esp_all");
+      client.subscribe("rx/cv1/cmd_node/1");
       global="MQTT Connected";
+      client.publish("rxcn/CV_00000001", "1");
+
+
+StaticJsonBuffer<300> JSONbuffer;
+  JsonObject& JSONencoder = JSONbuffer.createObject();
+ 
+  JSONencoder["dev"] = "rx";
+  JSONencoder["ver"] = "todover";
+  JSONencoder["fw"] = "todover";
+  JSONencoder["nn"] = "cvtest1";
+  
+  //JsonArray& values = JSONencoder.createNestedArray("values");
+ 
+ 
+  char JSONmessageBuffer[100];
+  JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+  Serial.println("Sending message to MQTT topic..");
+  Serial.println(JSONmessageBuffer);
+ 
+ 
+
+       JSONencoder["node_number"] = "1";
+     client.publish("rxcn/CV_00000001", "1");
+     delay(500);
+     client.publish("status_static/CV_00000001", JSONmessageBuffer);
+  char JSONmessageBuffer2[100];
+  JSONencoder.printTo(JSONmessageBuffer2, sizeof(JSONmessageBuffer2));
+  Serial.println("Sending message to MQTT topic..");
+  Serial.println(JSONmessageBuffer2);
+    delay(500);
+     client.publish("status_variable/CV_00000001", JSONmessageBuffer2);
+//rx/cv1/cmd_node/1
  
     } else {
       mqtt=0;
@@ -475,6 +532,12 @@ void reconnect() {
   
 }
 void loop(void) {
+if(heartbeat>=10000){
+  Serial.println("Alive");
+  heartbeat=0;
+  
+}
+  
   ArduinoOTA.handle();
 
   server.handleClient();
@@ -482,6 +545,10 @@ void loop(void) {
     if(wifiMulti.run() != WL_CONNECTED) {
         Serial.println("WiFi not connected!");
         delay(1000);
+         //digitalWrite(33,HIGH);
+    }else{
+     Serial.println("Alive");
+ 
     }
 
 
@@ -549,5 +616,5 @@ while(Serial.available()) {
   }
 
 
-
+heartbeat=heartbeat+1;
 }
