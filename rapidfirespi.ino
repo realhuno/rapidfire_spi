@@ -105,6 +105,35 @@ void led() {
 
 }
 
+
+void test() {
+
+ String var1 = server.arg("var1");
+ String var2 = server.arg("var2");
+
+digitalWrite(SPI_SS_PIN, LOW);
+delayMicroseconds(delaytime);  
+bitBangData((byte)var1.toInt()); // data transmission   OSD MODE
+bitBangData(61); // data transmission
+bitBangData(5); // data transmission
+bitBangData((byte)var2.toInt()); // data transmission
+bitBangData(72); // data transmission
+bitBangData(101); // data transmission
+bitBangData(108); // data transmission
+bitBangData(108); // data transmission
+bitBangData(111); // data transmission
+delayMicroseconds(delaytime);
+digitalWrite(SPI_SS_PIN, HIGH);
+
+
+ server.send(200, "text/plane", var1 + " " + var2 + "...send..."); //Send web page
+
+}
+
+
+
+
+
 void handleTime() {
 
  //int t_state = server.arg("time").toInt(); //Refer  xhttp.open("GET", "setLED?LEDstate="+led, true);
@@ -222,13 +251,21 @@ void setup(void) {
     wifiMulti.addAP("A1-7FB051", "hainz2015");
 
     Serial.println("Connecting Wifi...");
+   /*
     if(wifiMulti.run() == WL_CONNECTED) {
         Serial.println("");
         Serial.println("WiFi connected");
         Serial.println("IP address: ");
         Serial.println(WiFi.localIP());
     }
-  
+
+  */
+     while(wifiMulti.run() != WL_CONNECTED) {
+       Serial.println("WiFi not connected!");
+
+    
+       delay(1000);
+    }
 
 
 
@@ -271,9 +308,9 @@ void setup(void) {
   server.on("/readADC", handleADC);//To get update of ADC Value only
   server.on("/setLED", handleLED);
   server.on("/setTime", handleTime);
- server.on("/reconnect", reconnect);
+  server.on("/reconnect", reconnect);
   server.on("/led", led);
- 
+  server.on("/test", test);
   server.begin();                  //Start server
   Serial.println("HTTP server started");
 
@@ -359,18 +396,19 @@ delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 }
 
+
 void text(String text){
 digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);  
-bitBangData(84); // data transmission   OSD MODE
-bitBangData(61); // data transmission
-bitBangData(5); // data transmission
-bitBangData(138); // data transmission
-bitBangData(72); // data transmission
-bitBangData(101); // data transmission
-bitBangData(108); // data transmission
-bitBangData(108); // data transmission
-bitBangData(111); // data transmission
+bitBangData(84); // data transmission   T
+bitBangData(61); // data transmission   =
+bitBangData(5); // data transmission    (5 buchstaben also länge)
+bitBangData(138); // data transmission  (checksum)
+bitBangData(72); // data transmission   H
+bitBangData(101); // data transmission  E
+bitBangData(108); // data transmission  L
+bitBangData(108); // data transmission  L
+bitBangData(111); // data transmission  O
 delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 }
@@ -532,24 +570,13 @@ StaticJsonBuffer<300> JSONbuffer;
   
 }
 void loop(void) {
-if(heartbeat>=10000){
-  Serial.println("Alive");
-  heartbeat=0;
-  
-}
+
   
   ArduinoOTA.handle();
 
   server.handleClient();
   delay(1);
-    if(wifiMulti.run() != WL_CONNECTED) {
-        Serial.println("WiFi not connected!");
-        delay(1000);
-         //digitalWrite(33,HIGH);
-    }else{
-     Serial.println("Alive");
- 
-    }
+  
 
 
 
