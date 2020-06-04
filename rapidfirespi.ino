@@ -106,31 +106,6 @@ void led() {
 }
 
 
-void test() {
-
- String var1 = server.arg("var1");
- String var2 = server.arg("var2");
-
-digitalWrite(SPI_SS_PIN, LOW);
-delayMicroseconds(delaytime);  
-bitBangData((byte)var1.toInt()); // data transmission   OSD MODE
-bitBangData(61); // data transmission
-bitBangData(5); // data transmission
-bitBangData((byte)var2.toInt()); // data transmission
-bitBangData(72); // data transmission
-bitBangData(101); // data transmission
-bitBangData(108); // data transmission
-bitBangData(108); // data transmission
-bitBangData(111); // data transmission
-delayMicroseconds(delaytime);
-digitalWrite(SPI_SS_PIN, HIGH);
-
-
- server.send(200, "text/plane", var1 + " " + var2 + "...send..."); //Send web page
-
-}
-
-
 
 
 
@@ -170,6 +145,22 @@ byte bitBangData(byte _send)  // This function transmit the data via bitbanging
   } 
  
 }
+
+unsigned long hexToDec(String hexString) {
+  unsigned long decValue = 0;
+  char nextInt;
+  for ( long i = 0; i < hexString.length(); i++ ) {
+    nextInt = toupper(hexString[i]);
+    if( isxdigit(nextInt) ) {
+        if (nextInt >= '0' && nextInt <= '9') nextInt = nextInt - '0';
+        if (nextInt >= 'A' && nextInt <= 'F') nextInt = nextInt - 'A' + 10;
+        decValue = (decValue << 4) + nextInt;
+    }
+  }
+  return decValue;
+}
+
+
 void callback(char* topic, byte* message, unsigned int length) {
    if(mqtt==1){
  
@@ -246,7 +237,7 @@ void setup(void) {
 
   //WiFi.begin(WIFI_AP_NAME);
   
-  wifiMulti.addAP("Chorus32 LapTimer", "");
+    wifiMulti.addAP("Chorus32 LapTimer", "");
     wifiMulti.addAP("Laptimer", "laptimer");
     wifiMulti.addAP("A1-7FB051", "hainz2015");
 
@@ -260,8 +251,9 @@ void setup(void) {
     }
 
   */
+  Serial.println("WiFi not connected!");
      while(wifiMulti.run() != WL_CONNECTED) {
-       Serial.println("WiFi not connected!");
+       Serial.print(".");
 
     
        delay(1000);
@@ -276,6 +268,7 @@ void setup(void) {
 
   memset(buf, 0, 1500 * sizeof(char));
   //OTA
+  /*
     ArduinoOTA
     .onStart([]() {
       String type;
@@ -303,19 +296,20 @@ void setup(void) {
     });
 
 //----------------------------------------------------------------
- 
+*/
+  delay(1000); //Wait again 
   server.on("/", handleRoot);      //This is display page
   server.on("/readADC", handleADC);//To get update of ADC Value only
   server.on("/setLED", handleLED);
   server.on("/setTime", handleTime);
   server.on("/reconnect", reconnect);
   server.on("/led", led);
-  server.on("/test", test);
+
   server.begin();                  //Start server
   Serial.println("HTTP server started");
 
 
-  ArduinoOTA.begin();
+  //ArduinoOTA.begin();
 
 
   //INIT SPI 
@@ -338,8 +332,8 @@ void setup(void) {
   Serial.println("SPI Start");
   memset(buf, 0, 1500 * sizeof(char));
   delay(1000); //Wait again 
-MDNS.begin("radio0");
-MDNS.addService("http", "tcp", 80);
+  // MDNS.begin("radio0");
+  // MDNS.addService("http", "tcp", 80);
 // client.setServer(mqtt_server, 1883);
 //  client.setCallback(callback);
 }
@@ -397,7 +391,7 @@ digitalWrite(SPI_SS_PIN, HIGH);
 }
 
 
-void text(String text){
+void text_example(String text){
 digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);  
 bitBangData(84); // data transmission   T
@@ -413,26 +407,39 @@ delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 }
 
-void text_probleme(String text){
+void text(String text){
+
+//Checksum
 int len = strlen(text.c_str());
+int sum;
+int buf;
+   
+for(int i=0; i<len; i++){
+buf=text.charAt(i);
+sum=sum+(int(buf));
+}
+sum=sum+(len-2);
+String stringOne =  String(sum, HEX);  
+String newString = stringOne.substring(stringOne.length() - 2, stringOne.length());
+int chksum=hexToDec(newString);
+//checksum
+
 digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);  
-Serial.print("_");
-Serial.print(145+(len-2));
-Serial.println("_");
 bitBangData(84); // data transmission   OSD MODE
 bitBangData(61); // data transmission
 bitBangData(len-2); // data transmission
-bitBangData(145+(len-2)); // data transmission 138
+bitBangData(chksum); // data transmission 138
    for(int i=2; i<len; i++){
-   Serial.println(int(text.charAt(i)));
+   //Serial.println(int(text.charAt(i)));
    bitBangData(int(text.charAt(i)));
 
 
  }
+
 delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
-}  
+ }  
 
 
 void osdmode(int i){
