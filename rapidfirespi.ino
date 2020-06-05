@@ -176,17 +176,18 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
 
    Serial.println(String(topic));
    Serial.println(line);
-     //Rotorhazard OSD
-     //ENTER 29UML1:Callsign 2 L1: 0:06.451%
-     //charAt(0) === "\n"
+     //Rotorhazard send \n first 
+     //   ->                    \n29UML1:Callsign 2 L1: 0:06.451%
+   
      if(line.charAt(0) == '\n') {
      Serial.println("Send text mqtt");
      String stringOne;
-     stringOne="T="+line.substring(7,32);
+     stringOne="T="+line.substring(8,31);
      Serial.println(stringOne);
-     text(stringOne);
+     text(stringOne);            //not working
      }
-     if(line.charAt(0) == 'T') {
+     
+     if(line.charAt(0) == 'T') {  //Normal mqtt osd text working!!
      text(line);
      }
      
@@ -421,6 +422,9 @@ bitBangData(chksum); // data transmission 138
 
 delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
+
+Serial.println(chksum);
+global=chksum;
  }  
 
 
@@ -514,7 +518,7 @@ boolean reconnect() {                                       //MQTT Connect and R
     Serial.print("Attempting MQTT connection...");
     Serial.println(mqttserver.c_str());
     // Attempt to connect
-    if (client.connect("ESP8266Client")) {
+    if (client.connect("rapidfire_1")) {
       
       Serial.println("connected");
       // Subscribe
