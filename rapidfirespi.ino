@@ -45,6 +45,8 @@ char buf[MAX_BUF];
 uint32_t buf_pos = 0;
 String global;
 int mqtt=0;
+long lastReconnectAttempt = 0;
+String mqttserver;
 //===============================================================
 // This routine is executed when you open its IP in browser
 //===============================================================
@@ -61,7 +63,7 @@ void handleADC() {
 }
 
  
-void handleLED() {
+void handleLED() {                                        //Handle webrequests
 
  String t_state = server.arg("LEDstate"); //Refer  xhttp.open("GET", "setLED?LEDstate="+led, true);
  
@@ -160,11 +162,8 @@ unsigned long hexToDec(String hexString) {
   return decValue;
 }
 
-
-void callback(char* topic, byte* message, unsigned int length) {
-   if(mqtt==1){
- 
-  Serial.print("Message arrived on topic: ");
+void callback(char* topic, byte* message, unsigned int length) {             //MQTT Callback
+   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
   String line;
@@ -176,12 +175,22 @@ void callback(char* topic, byte* message, unsigned int length) {
   Serial.println("Topic:");
 
    Serial.println(String(topic));
-   if (String(topic) == "rx/cv1/cmd_esp_all") {
-  Serial.println("MQTT request from Rotorhazard");
-   
-
-
-
+   Serial.println(line);
+     //Rotorhazard OSD
+     //ENTER 29UML1:Callsign 2 L1: 0:06.451%
+     //charAt(0) === "\n"
+     if(line.charAt(0) == '\n') {
+     Serial.println("Send text mqtt");
+     String stringOne;
+     stringOne="T="+line.substring(7,32);
+     Serial.println(stringOne);
+     text(stringOne);
+     }
+     if(line.charAt(0) == 'T') {
+     text(line);
+     }
+     
+     //LED Light
      if(line.charAt(0) == 'L') {
      if(line.charAt(2)=='0'){
      pinMode(4,OUTPUT);
@@ -191,46 +200,34 @@ void callback(char* topic, byte* message, unsigned int length) {
      pinMode(4,OUTPUT);
      digitalWrite(4,HIGH);
      }
-    
-  } 
+     }
 
-  }
- 
- 
-
- 
-  // Feel free to add more if statements to control more GPIOs with MQTT
-
-  // If a message is received on the topic esp32/output, you check if the message is either "on" or "off". 
-  // Changes the output state according to the message
-  if (String(topic) == "esp32/output") {
-    
+     //Rapidfire CMD
+       
   if(line.charAt(0) == 'S') {
   buzzer();
   Serial.println("BUZZER");
+  global="MQTTBUZZER";
   }
   if(line.charAt(0) == 'O') {
   osdmode(line.charAt(2));
-    Serial.println("OSD");
+  Serial.println("OSD");
 
   }
   if(line.charAt(0) == 'C') {
   channel(line.charAt(2));
-    Serial.println("Channel");
+  Serial.println("Channel");
 
   }     
   if(line.charAt(0) == 'B') {
   band(line.charAt(2));
-    Serial.println("Band");
+  Serial.println("Band");
+  } 
+     
 
-  } 
-  if(line.charAt(0) == 'T') {
-      Serial.println("Text");
-  text(line);
-  } 
+
 }
-  }
-}
+
 void setup(void) {
   pinMode(33,OUTPUT);
   Serial.begin(115200);
@@ -262,13 +259,57 @@ void setup(void) {
 
 
 
+      Serial.print("X");
+
+    
+       delay(1000);
+      Serial.print("Y");
+
+    
+       delay(1000);
+  
+      Serial.print("Z");
+
+    
+       delay(1000);
+  //memset(buf, 0, 1500 * sizeof(char));
 
 
-  delay(5000);
 
-  memset(buf, 0, 1500 * sizeof(char));
-  //OTA
+
+
+
+  //INIT SPI 
+  pinMode(SPI_SS_PIN, OUTPUT);
+  pinMode(SPI_DATA_PIN, OUTPUT);
+  pinMode(SPI_CLOCK_PIN, OUTPUT);
+
+  
+  digitalWrite(SPI_SS_PIN, HIGH);
+  digitalWrite(SPI_CLOCK_PIN, HIGH);
+  digitalWrite(SPI_DATA_PIN, HIGH);
+  delay(200); //Let Rapidfire init SPI       
+  
+  digitalWrite(SPI_SS_PIN, LOW);
+  digitalWrite(SPI_CLOCK_PIN, LOW);
+  digitalWrite(SPI_DATA_PIN, LOW);
+  delay(1000);
+  digitalWrite(SPI_SS_PIN, HIGH);
+  Serial.begin(115200);
+  Serial.println("SPI Start");
+  //memset(buf, 0, 1500 * sizeof(char));
+  
   /*
+  
+  delay(1000); //Wait again 
+ 
+  MDNS.begin("radio0");
+  MDNS.addService("http", "tcp", 80);
+// client.setServer(mqtt_server, 1883);
+//  client.setCallback(callback);
+
+  //OTA
+
     ArduinoOTA
     .onStart([]() {
       String type;
@@ -296,7 +337,16 @@ void setup(void) {
     });
 
 //----------------------------------------------------------------
+
+Serial.println("OTA started");
+ delay(1000);
+ 
+
+  ArduinoOTA.begin();
+
 */
+
+
   delay(1000); //Wait again 
   server.on("/", handleRoot);      //This is display page
   server.on("/readADC", handleADC);//To get update of ADC Value only
@@ -307,78 +357,10 @@ void setup(void) {
 
   server.begin();                  //Start server
   Serial.println("HTTP server started");
-
-
-  //ArduinoOTA.begin();
-
-
-  //INIT SPI 
-  pinMode(SPI_SS_PIN, OUTPUT);
-  pinMode(SPI_DATA_PIN, OUTPUT);
-  pinMode(SPI_CLOCK_PIN, OUTPUT);
-
-  
-  digitalWrite(SPI_SS_PIN, HIGH);
-  digitalWrite(SPI_CLOCK_PIN, HIGH);
-  digitalWrite(SPI_DATA_PIN, HIGH);
-  delay(200); //Let Rapidfire init SPI       
-  
-  digitalWrite(SPI_SS_PIN, LOW);
-  digitalWrite(SPI_CLOCK_PIN, LOW);
-  digitalWrite(SPI_DATA_PIN, LOW);
-  delay(1000);
-  digitalWrite(SPI_SS_PIN, HIGH);
-  Serial.begin(115200);
-  Serial.println("SPI Start");
-  memset(buf, 0, 1500 * sizeof(char));
-  delay(1000); //Wait again 
-  // MDNS.begin("radio0");
-  // MDNS.addService("http", "tcp", 80);
-// client.setServer(mqtt_server, 1883);
-//  client.setCallback(callback);
 }
-// Not working.... another methode...
-void rapidsend(String text){
-int len = strlen(text.c_str());
-int checksum=0;
- Serial.print("Len:");
- Serial.println(len);
- if(len<=4){
-   bitBangData(int(text.charAt(0)));
-   Serial.println(int(text.charAt(0)));
-   bitBangData(int(text.charAt(1)));
-   Serial.println(int(text.charAt(1)));
 
-   checksum=int(text.charAt(0))+int(text.charAt(1));
-   bitBangData(00);
-   Serial.println(int(0));
-   bitBangData(checksum);
-   Serial.println(checksum);
- }else{
-   bitBangData(int(text.charAt(0)));
-   Serial.println(int(text.charAt(0)));
-   bitBangData(int(text.charAt(1)));
-   Serial.println(int(text.charAt(1)));
-   bitBangData(1);//len-4
-   Serial.println(1);//len-4
-   checksum=int(text.charAt(0))+int(text.charAt(1));
-   int testi=text.charAt(2); //len-3
-   checksum=141+testi;
-   bitBangData(checksum);
-   Serial.println(checksum);
-/*
-   for(int i=3; i<(len-3); i++){
-   
-   bitBangData(int(text.charAt(i)));
-   Serial.println(int(text.charAt(i)));
-   checksum=checksum+int(text.charAt(i));
- }
- */
-   bitBangData(text.charAt(2));
-   Serial.println(text.charAt(2));
 
- }
-}
+
 void buzzer(){
 digitalWrite(SPI_SS_PIN, LOW);
 delayMicroseconds(delaytime);
@@ -407,7 +389,7 @@ delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 }
 
-void text(String text){
+void text(String text){                               //Rapidfire OSD TEXT
 
 //Checksum
 int len = strlen(text.c_str());
@@ -513,23 +495,32 @@ Serial.println(i-48);
 //3=lock+standard
 //4=internal
 }
-void reconnect() {
+boolean reconnect() {                                       //MQTT Connect and Reconnect
   // Loop until we're reconnected
- 
+ mqtt=1;
    String ipa=server.arg("ip");
- 
-  client.setServer(ipa.c_str(), 1883);
+
+   if(ipa.length()>=5){
+    Serial.print("New MQTT connection...");
+    mqttserver=ipa;
+   }else{
+    Serial.print("MQTT reconnect...");
+   }
+   
+   
+  client.setServer(mqttserver.c_str(), 1883);
   client.setCallback(callback);
   
     Serial.print("Attempting MQTT connection...");
-    Serial.println(ipa.c_str());
+    Serial.println(mqttserver.c_str());
     // Attempt to connect
     if (client.connect("ESP8266Client")) {
-      mqtt=1;
+      
       Serial.println("connected");
       // Subscribe
       //client.subscribe("esp32/output");
       //client.subscribe("rx/cv1/cmd_esp_all");
+      
       client.subscribe("rx/cv1/cmd_node/1");
       global="MQTT Connected";
       client.publish("rxcn/CV_00000001", "1");
@@ -566,89 +557,34 @@ StaticJsonBuffer<300> JSONbuffer;
 //rx/cv1/cmd_node/1
  
     } else {
-      mqtt=0;
+      mqtt=1;
       Serial.print("failed, rc=");
       Serial.print(client.state());
       global="MQTT not Connected";
       Serial.println(" try again in 5 seconds");
       // Wait 5 seconds before retrying
-      delay(5000);
+      delay(500);
     }
-  
+  return client.connected();  
 }
 void loop(void) {
-
-  
-  ArduinoOTA.handle();
-
   server.handleClient();
-  delay(1);
-  
-
-
-
-
-/*
-  if(line.charAt(0) == 'S') {
-  buzzer();
-  }
-  if(line.charAt(0) == 'O') {
-  osdmode(line.charAt(2));
-  }
-  if(line.charAt(0) == 'C') {
-  channel(line.charAt(2));
-  }     
-  if(line.charAt(0) == 'B') {
-  band(line.charAt(2));
+ if (!client.connected() && mqtt==1) {
+    long now = millis();
+    if (now - lastReconnectAttempt > 5000) { // Try to reconnect.
+      lastReconnectAttempt = now;
+      if (reconnect()) { // Attempt to reconnect.
+        lastReconnectAttempt = 0;
+      }
+    }
   } 
-  if(line.charAt(0) == 'T') {
-  text(line);
-
-  
-  }  
-  */
-  
-    IPAddress myip = WiFi.localIP();
-    
-while(Serial.available()) {
-    if(buf_pos >= MAX_BUF -1 ) {
-      buf_pos = 0; // clear buffer when full
-      break;
-    }
-    buf[buf_pos++] = Serial.read();
-    if(buf[buf_pos - 1] == '\n') {
-     //Serial.println(buf);
-     if(buf[0] == 'S') {
-
-
-     buzzer();
-
-     }
-     if(buf[0] == 'O') {
-     osdmode(buf[2]);
-     }
-     if(buf[0] == 'C') {
-     channel(buf[2]);
-     }  
-     if(buf[0] == 'B') {
-     band(buf[2]);
-     }    
-     if(buf[0] == 'T') {
-     text(buf);
-     }  
-     buf_pos = 0;
-     memset(buf, 0, 1500 * sizeof(char));
-    }
-  }
-
-    
-  if (!client.connected()) {
-    //reconnect();
-  }
-  if(mqtt=1){
-  client.loop();
+if(mqtt==1){ // Connected.
+    client.loop();
+    //client.publish(channelName,"Hello world!"); // Publish message.
+    //Serial.println(mqtt);
+ 
   }
 
 
-heartbeat=heartbeat+1;
+
 }
