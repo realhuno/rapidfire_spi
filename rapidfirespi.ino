@@ -176,13 +176,23 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
 
    Serial.println(String(topic));
    Serial.println(line);
+  global=line;
      //Rotorhazard send \n first 
-     //   ->                    \n29UML1:Callsign 2 L1: 0:06.451%
-   
-     if(line.charAt(0) == '\n') {
+     //   ->                    29UML1:Callsign 2 L1: 0:06.451%
+     line.trim();
+
+     if(line.charAt(0) == '0') {             //09UMFinish%
      Serial.println("Send text mqtt");
      String stringOne;
-     stringOne="T="+line.substring(8,31);
+     //stringOne="T="+line.substring(4,line.lastIndexOf('%')); //8
+     stringOne="T="+line.substring(4,6); //8
+     Serial.println(stringOne);
+     text(stringOne);            //not working
+     }
+     if(line.charAt(0) == '2') {
+     Serial.println("Send text mqtt");
+     String stringOne;
+     stringOne="T="+line.substring(7,31); //8
      Serial.println(stringOne);
      text(stringOne);            //not working
      }
@@ -231,6 +241,10 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
 
 void setup(void) {
   pinMode(33,OUTPUT);
+    //INIT SPI 
+  pinMode(SPI_SS_PIN, OUTPUT);
+  pinMode(SPI_DATA_PIN, OUTPUT);
+  pinMode(SPI_CLOCK_PIN, OUTPUT);
   Serial.begin(115200);
 
   //WiFi.begin(WIFI_AP_NAME);
@@ -254,38 +268,11 @@ void setup(void) {
        Serial.print(".");
 
     
-       delay(1000);
+       delay(500);
     }
 
 
 
-
-      Serial.print("X");
-
-    
-       delay(1000);
-      Serial.print("Y");
-
-    
-       delay(1000);
-  
-      Serial.print("Z");
-
-    
-       delay(1000);
-  //memset(buf, 0, 1500 * sizeof(char));
-
-
-
-
-
-
-  //INIT SPI 
-  pinMode(SPI_SS_PIN, OUTPUT);
-  pinMode(SPI_DATA_PIN, OUTPUT);
-  pinMode(SPI_CLOCK_PIN, OUTPUT);
-
-  
   digitalWrite(SPI_SS_PIN, HIGH);
   digitalWrite(SPI_CLOCK_PIN, HIGH);
   digitalWrite(SPI_DATA_PIN, HIGH);
@@ -296,21 +283,18 @@ void setup(void) {
   digitalWrite(SPI_DATA_PIN, LOW);
   delay(1000);
   digitalWrite(SPI_SS_PIN, HIGH);
-  Serial.begin(115200);
+
   Serial.println("SPI Start");
   //memset(buf, 0, 1500 * sizeof(char));
   
-  /*
   
-  delay(1000); //Wait again 
+
  
-  MDNS.begin("radio0");
-  MDNS.addService("http", "tcp", 80);
-// client.setServer(mqtt_server, 1883);
-//  client.setCallback(callback);
+ // MDNS.begin("radio0");
+ // MDNS.addService("http", "tcp", 80);
 
   //OTA
-
+/*
     ArduinoOTA
     .onStart([]() {
       String type;
@@ -338,17 +322,17 @@ void setup(void) {
     });
 
 //----------------------------------------------------------------
-
+*/
 Serial.println("OTA started");
- delay(1000);
+ delay(250);
  
 
   ArduinoOTA.begin();
 
-*/
 
 
-  delay(1000); //Wait again 
+
+  delay(250); //Wait again 
   server.on("/", handleRoot);      //This is display page
   server.on("/readADC", handleADC);//To get update of ADC Value only
   server.on("/setLED", handleLED);
@@ -358,6 +342,14 @@ Serial.println("OTA started");
 
   server.begin();                  //Start server
   Serial.println("HTTP server started");
+
+  //setup done... blink led
+ pinMode(4,OUTPUT);
+ digitalWrite(4,HIGH);
+ delay(500);
+ digitalWrite(4,LOW);
+ delay(500);
+
 }
 
 
@@ -424,6 +416,7 @@ delayMicroseconds(delaytime);
 digitalWrite(SPI_SS_PIN, HIGH);
 
 Serial.println(chksum);
+Serial.println(len,DEC);
 global=chksum;
  }  
 
@@ -526,6 +519,8 @@ boolean reconnect() {                                       //MQTT Connect and R
       //client.subscribe("rx/cv1/cmd_esp_all");
       
       client.subscribe("rx/cv1/cmd_node/1");
+      client.subscribe("rx/cv1/cmd_all");
+      
       global="MQTT Connected";
       client.publish("rxcn/CV_00000001", "1");
 
@@ -588,7 +583,7 @@ if(mqtt==1){ // Connected.
     //Serial.println(mqtt);
  
   }
-
+  ArduinoOTA.handle();
 
 
 }
