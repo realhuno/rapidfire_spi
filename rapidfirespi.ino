@@ -23,7 +23,7 @@ WebServer server(80);
 #define mqtt_rx "rx/cv1/" //rapidfire ID for mqtt
 
 int heartbeat=0;
-
+String ipa="10.0.0.50";
 WiFiMulti wifiMulti;
 // Add your MQTT Broker IP address, example:
 //const char* mqtt_server = "192.168.1.144";
@@ -87,7 +87,7 @@ void handleLED() {                                        //Handle webrequests
   }  
  Serial1.println(t_state);
  Serial.println(t_state);
- global=t_state;
+ global=global+t_state;
  server.send(200, "text/plane", t_state); //Send web page
 
 }
@@ -167,34 +167,82 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
   Serial.print(topic);
   Serial.print(". Message: ");
   String line;
-  
+
+
+
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
-    line += (char)message[i];
+    line += (char)message[i];   
   }
   Serial.println("Topic:");
 
    Serial.println(String(topic));
    Serial.println(line);
-  global=line;
+  
      //Rotorhazard send \n first 
      //   ->                    29UML1:Callsign 2 L1: 0:06.451%
      line.trim();
+     //Change RotorHazard vrx id
+     /*
+     if(line.indexOf('number')){
+     global=global+line.substring(12,13);
+     char JSONmessageBuffer[100];
+     StaticJsonBuffer<300> JSONbuffer;
+     JsonObject& JSONencoder = JSONbuffer.createObject();
+     //JSONencoder["node_number"] = '6';
+     JSONencoder["node_number"] = line.substring(12,13);
+
+     JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+     
+     
+     
+     client.publish("status_variable/CV_00000001", JSONmessageBuffer);
+     
+     
+     global=global+"CHANGE NODE_NUMBER";
+     }
+*/
+     
+     global=global+line;
+                           //rx/cv1/cmd_esp_target/CV_00000001  
 
      if(line.charAt(0) == '0') {             //09UMFinish%
      Serial.println("Send text mqtt");
      String stringOne;
-     //stringOne="T="+line.substring(4,line.lastIndexOf('%')); //8
-     stringOne="T="+line.substring(4,6); //8
-     Serial.println(stringOne);
-     text(stringOne);            //not working
+     stringOne="T="+line.substring(4,line.lastIndexOf('%')+3); //8
+     //stringOne="T="+line; //8
+     int len = strlen(stringOne.c_str());
+     String fill;
+     int i;
+     for (int i = len; i < 24; i++){
+     fill=fill+" ";
      }
-     if(line.charAt(0) == '2') {
+     stringOne=stringOne+fill;
+     stringOne.replace("%", " "); //replace % with space
+     text(stringOne);            //not working
+     global=global+stringOne;
+     }
+     
+     if(line.charAt(0) == '2') {          //Push in laptimes
      Serial.println("Send text mqtt");
      String stringOne;
-     stringOne="T="+line.substring(7,31); //8
-     Serial.println(stringOne);
+
+     stringOne="T="+line.substring(5,line.lastIndexOf('%')+3); //8
+     int len = strlen(stringOne.c_str());
+     //fill with spaces
+     String fill;
+     int i;
+     for (int i = len; i < 24; i++){
+     fill=fill+" ";
+     }
+     stringOne=stringOne+fill;
+     stringOne.replace("%", " "); //replace % with space
+
+     
      text(stringOne);            //not working
+     global=global+"ooooo";
+     global=global+line.lastIndexOf('%');
+     global=global+"ooooo";
      }
      
      if(line.charAt(0) == 'T') {  //Normal mqtt osd text working!!
@@ -417,7 +465,7 @@ digitalWrite(SPI_SS_PIN, HIGH);
 
 Serial.println(chksum);
 Serial.println(len,DEC);
-global=chksum;
+global=global+chksum;
  }  
 
 
@@ -495,7 +543,7 @@ Serial.println(i-48);
 boolean reconnect() {                                       //MQTT Connect and Reconnect
   // Loop until we're reconnected
  mqtt=1;
-   String ipa=server.arg("ip");
+ ipa=server.arg("ip");
 
    if(ipa.length()>=5){
     Serial.print("New MQTT connection...");
@@ -520,8 +568,8 @@ boolean reconnect() {                                       //MQTT Connect and R
       
       client.subscribe("rx/cv1/cmd_node/1");
       client.subscribe("rx/cv1/cmd_all");
-      
-      global="MQTT Connected";
+      client.subscribe("rx/cv1/cmd_esp_target/CV_00000001");
+      global=global+"MQTT Connected";
       client.publish("rxcn/CV_00000001", "1");
 
 
@@ -559,7 +607,7 @@ StaticJsonBuffer<300> JSONbuffer;
       mqtt=1;
       Serial.print("failed, rc=");
       Serial.print(client.state());
-      global="MQTT not Connected";
+      global=global+"MQTT not Connected";
       Serial.println(" try again in 5 seconds");
       // Wait 5 seconds before retrying
       delay(500);
