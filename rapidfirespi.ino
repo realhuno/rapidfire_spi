@@ -544,7 +544,10 @@ boolean reconnect() {                                       //MQTT Connect and R
   // Loop until we're reconnected
  mqtt=1;
  ipa=server.arg("ip");
-
+ String rxvid=WiFi.macAddress();
+ String topic;
+ rxvid.replace(":", ""); //remove : from mac
+ global=global+rxvid;
    if(ipa.length()>=5){
     Serial.print("New MQTT connection...");
     mqttserver=ipa;
@@ -570,7 +573,8 @@ boolean reconnect() {                                       //MQTT Connect and R
       client.subscribe("rx/cv1/cmd_all");
       client.subscribe("rx/cv1/cmd_esp_target/CV_00000001");
       global=global+"MQTT Connected";
-      client.publish("rxcn/CV_00000001", "1");
+      //String topic = "rxcn/CV_" + rxvid;     why two times? bottom....
+      //client.publish(topic.c_str(), "1");
 
 
 StaticJsonBuffer<300> JSONbuffer;
@@ -579,7 +583,7 @@ StaticJsonBuffer<300> JSONbuffer;
   JSONencoder["dev"] = "rx";
   JSONencoder["ver"] = "todover";
   JSONencoder["fw"] = "todover";
-  JSONencoder["nn"] = "cvtest1";
+  JSONencoder["nn"] = "rapidfire";
   
   //JsonArray& values = JSONencoder.createNestedArray("values");
  
@@ -591,16 +595,20 @@ StaticJsonBuffer<300> JSONbuffer;
  
  
 
-       JSONencoder["node_number"] = "1";
-     client.publish("rxcn/CV_00000001", "1");
+     JSONencoder["node_number"] = "1";
+     topic = "rxcn/CV_" + rxvid;
+     client.publish(topic.c_str(), "1");
      delay(500);
-     client.publish("status_static/CV_00000001", JSONmessageBuffer);
+     topic = "status_static/CV_" + rxvid;
+     client.publish(topic.c_str(), JSONmessageBuffer);
   char JSONmessageBuffer2[100];
   JSONencoder.printTo(JSONmessageBuffer2, sizeof(JSONmessageBuffer2));
   Serial.println("Sending message to MQTT topic..");
   Serial.println(JSONmessageBuffer2);
     delay(500);
-     client.publish("status_variable/CV_00000001", JSONmessageBuffer2);
+     topic = "status_variable/CV_" + rxvid;
+     
+     client.publish(topic.c_str(), JSONmessageBuffer2);
 //rx/cv1/cmd_node/1
  
     } else {
