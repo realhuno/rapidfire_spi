@@ -20,7 +20,7 @@ WebServer server(80);
 
 #define WIFI_AP_NAME "Chorus32 LapTimer"
 
-#define mqtt_rx "rx/cv1/" //rapidfire ID for mqtt
+
 
 int heartbeat=0;
 String ipa="10.0.0.50";
@@ -166,9 +166,10 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
    Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
-  String line;
-
-
+ String line;
+ String rxvid=WiFi.macAddress();
+ String topicmsg;
+ rxvid.replace(":", ""); //remove : from mac
 
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
@@ -182,28 +183,36 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      //Rotorhazard send \n first 
      //   ->                    29UML1:Callsign 2 L1: 0:06.451%
      line.trim();
-     //Change RotorHazard vrx id
-     /*
-     if(line.indexOf('number')){
-     global=global+line.substring(12,13);
+     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'B') {   
+     global=global+"change frequency";
+     channel(line.charAt(4));
+     }
+     //09BC7%    09B=command change freq..  c=raceband channel 7   
+     //Change RotorHazard vrx id rx/cv1/cmd_esp_target/CV_246F28166140
+     
+     if(line.indexOf('node_number')){
+     int current_nr=line.substring(12,13).toInt();
+     if(current_nr>0){
+   
+     
      char JSONmessageBuffer[100];
      StaticJsonBuffer<300> JSONbuffer;
      JsonObject& JSONencoder = JSONbuffer.createObject();
-     //JSONencoder["node_number"] = '6';
-     JSONencoder["node_number"] = line.substring(12,13);
+     //JSONencoder["node_number"] = String(6);
+     JSONencoder["node_number"] = String(line.substring(12,13));
 
      JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
      
      
-     
-     client.publish("status_variable/CV_00000001", JSONmessageBuffer);
+     topicmsg="status_variable/CV_"+rxvid;
+     client.publish(topicmsg.c_str(), JSONmessageBuffer);
      
      
      global=global+"CHANGE NODE_NUMBER";
      }
-*/
-     
-     global=global+line;
+     }
+      
+   
                            //rx/cv1/cmd_esp_target/CV_00000001  
 
      if(line.charAt(0) == '0') {             //09UMFinish%
@@ -341,36 +350,7 @@ void setup(void) {
  // MDNS.begin("radio0");
  // MDNS.addService("http", "tcp", 80);
 
-  //OTA
-/*
-    ArduinoOTA
-    .onStart([]() {
-      String type;
-      if (ArduinoOTA.getCommand() == U_FLASH)
-        type = "sketch";
-      else // U_SPIFFS
-        type = "filesystem";
 
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-    })
-    .onEnd([]() {
-      Serial.println("\nEnd");
-    })
-    .onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-    })
-    .onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
-    });
-
-//----------------------------------------------------------------
-*/
 Serial.println("OTA started");
  delay(250);
  
@@ -571,7 +551,10 @@ boolean reconnect() {                                       //MQTT Connect and R
       
       client.subscribe("rx/cv1/cmd_node/1");
       client.subscribe("rx/cv1/cmd_all");
-      client.subscribe("rx/cv1/cmd_esp_target/CV_00000001");
+      topic = "rx/cv1/cmd_esp_target/CV_" + rxvid;
+      client.subscribe(topic.c_str()); //change id new via mac
+      //client.subscribe("rx/cv1/cmd_esp_target/CV_00000001"); //change id old
+      
       global=global+"MQTT Connected";
       //String topic = "rxcn/CV_" + rxvid;     why two times? bottom....
       //client.publish(topic.c_str(), "1");
