@@ -16,7 +16,7 @@
  
 WebServer server(80);
 
-
+String mqttid="2"; //Change THIS .... MQTTID!!
 
 #define WIFI_AP_NAME "Chorus32 LapTimer"
 
@@ -41,6 +41,7 @@ PubSubClient client(espClient);
 
 #define delaytime 70
 #define MAX_BUF 1500
+
 char buf[MAX_BUF];
 uint32_t buf_pos = 0;
 String global;
@@ -80,6 +81,18 @@ void handleLED() {                                        //Handle webrequests
   band(t_state.charAt(2));
   }  
   if(t_state.charAt(0) == 'T') {
+
+
+     t_state.trim();
+     int len = strlen(t_state.c_str());
+     String fill;
+     int i;
+     for (int i = len; i < 26; i++){
+     fill=fill+" ";
+     }
+     t_state=t_state+fill;
+     t_state.replace("%", " "); //replace % with space
+     text(t_state);            //not working
   text(t_state);
   }  
   if(t_state.charAt(0) == 'D') {
@@ -163,6 +176,7 @@ unsigned long hexToDec(String hexString) {
 }
 
 void callback(char* topic, byte* message, unsigned int length) {             //MQTT Callback
+
    Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
@@ -191,18 +205,38 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      global=global+"CHANNEL: "+line.charAt(4)+"<br>";
      }
      //SWITCH BAND
-     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'B' && line.charAt(3) == 'G') {   
-     band(line.charAt(4));
+     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'B' && line.charAt(3) == 'G') { 
+     bandn=line.charAt(4);   
+     if(bandn==2){bandn=2;} //raceband
+     if(bandn==4){bandn=1;} //fatshark
+     if(bandn==3){bandn=3;} //e
+     if(bandn==5){bandn=6;} //low
+     if(bandn==1){bandn=4;} //b
+     if(bandn==0){bandn=5;} //a
+    
+     band(bandn);
      global=global+"BAND: "+line.charAt(4)+"<br>";
      }
      //09BC7%    09B=command change freq..  c=raceband channel 7   
      //Change RotorHazard vrx id rx/cv1/cmd_esp_target/CV_246F28166140
      
-     if(line.indexOf('node_number')){
+     if(line.indexOf('node_number')){                      //<<command 
      int current_nr=line.substring(12,13).toInt();
      if(current_nr>0){
-   
-     
+     //String stringnr="5";
+      client.unsubscribe("rx/cv1/cmd_node/0");
+      client.unsubscribe("rx/cv1/cmd_node/1");
+      client.unsubscribe("rx/cv1/cmd_node/2");
+      client.unsubscribe("rx/cv1/cmd_node/3");
+      client.unsubscribe("rx/cv1/cmd_node/4");
+      client.unsubscribe("rx/cv1/cmd_node/5");
+      client.unsubscribe("rx/cv1/cmd_node/6");
+      client.unsubscribe("rx/cv1/cmd_node/7");
+      client.unsubscribe("rx/cv1/cmd_node/8");
+      topicmsg = "rx/cv1/cmd_node/"+line.substring(12,13);                                            
+                             
+      client.subscribe(topicmsg.c_str());
+     global=global+topicmsg+"<br>"; 
      char JSONmessageBuffer[100];
      StaticJsonBuffer<300> JSONbuffer;
      JsonObject& JSONencoder = JSONbuffer.createObject();
@@ -217,6 +251,8 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      
      
      global=global+"CHANGE NODE_NUMBER"+"<br>";
+     //mqttid=current_nr;
+     //reconnect();
      }
      }
       
@@ -263,6 +299,20 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      }
      
      if(line.charAt(0) == 'T') {  //Normal mqtt osd text working!!
+     String t_state=line;
+     t_state.trim();
+     int len = strlen(t_state.c_str());
+     String fill;
+     int i;
+     for (int i = len; i < 26; i++){
+     fill=fill+" ";
+     }
+     t_state=t_state+fill;
+     t_state.replace("%", " "); //replace % with space
+     text(t_state);            //not working 
+
+
+      
      text(line);
      }
      
@@ -550,14 +600,17 @@ boolean reconnect() {                                       //MQTT Connect and R
     Serial.print("Attempting MQTT connection...");
     Serial.println(mqttserver.c_str());
     // Attempt to connect
-    if (client.connect("rapidfire_1")) {
+    topic = "rapidfire_"+rxvid;
+    if (client.connect(topic.c_str())) {
       
       Serial.println("connected");
       // Subscribe
       //client.subscribe("esp32/output");
       //client.subscribe("rx/cv1/cmd_esp_all");
+      //topic = "rx/cv1/cmd_node/"+mqttid;                    <<switch this to callback                                 
+      //global=global+topic+"<br>";                          <<switch this to callback 
       
-      client.subscribe("rx/cv1/cmd_node/1");
+      //client.subscribe(topic.c_str());//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<rx/cv1/cmd_node/1
       client.subscribe("rx/cv1/cmd_all");
       topic = "rx/cv1/cmd_esp_target/CV_" + rxvid;
       client.subscribe(topic.c_str()); //change id new via mac
@@ -598,7 +651,7 @@ StaticJsonBuffer<300> JSONbuffer;
   Serial.println(JSONmessageBuffer2);
     delay(500);
      topic = "status_variable/CV_" + rxvid;
-     
+     global=global+topic+"<br>";
      client.publish(topic.c_str(), JSONmessageBuffer2);
 //rx/cv1/cmd_node/1
  
