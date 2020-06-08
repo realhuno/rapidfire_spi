@@ -87,7 +87,7 @@ void handleLED() {                                        //Handle webrequests
   }  
  Serial1.println(t_state);
  Serial.println(t_state);
- global=global+t_state;
+ global=global+t_state+"<br>";
  server.send(200, "text/plane", t_state); //Send web page
 
 }
@@ -169,12 +169,14 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
  String line;
  String rxvid=WiFi.macAddress();
  String topicmsg;
+ int bandn;
  rxvid.replace(":", ""); //remove : from mac
 
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
     line += (char)message[i];   
   }
+  global=global+line+"<br>";
   Serial.println("Topic:");
 
    Serial.println(String(topic));
@@ -183,9 +185,15 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      //Rotorhazard send \n first 
      //   ->                    29UML1:Callsign 2 L1: 0:06.451%
      line.trim();
-     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'B') {   
-     global=global+"change frequency";
-     channel(line.charAt(4));
+     //SWITCH CHANNEL
+     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'B' && line.charAt(3) == 'C') {   
+     channel(line.charAt(4)+1);
+     global=global+"CHANNEL: "+line.charAt(4)+"<br>";
+     }
+     //SWITCH BAND
+     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'B' && line.charAt(3) == 'G') {   
+     band(line.charAt(4));
+     global=global+"BAND: "+line.charAt(4)+"<br>";
      }
      //09BC7%    09B=command change freq..  c=raceband channel 7   
      //Change RotorHazard vrx id rx/cv1/cmd_esp_target/CV_246F28166140
@@ -208,7 +216,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      client.publish(topicmsg.c_str(), JSONmessageBuffer);
      
      
-     global=global+"CHANGE NODE_NUMBER";
+     global=global+"CHANGE NODE_NUMBER"+"<br>";
      }
      }
       
@@ -229,7 +237,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      stringOne=stringOne+fill;
      stringOne.replace("%", " "); //replace % with space
      text(stringOne);            //not working
-     global=global+stringOne;
+     global=global+stringOne+"<br>";
      }
      
      if(line.charAt(0) == '2') {          //Push in laptimes
@@ -251,7 +259,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      text(stringOne);            //not working
      global=global+"ooooo";
      global=global+line.lastIndexOf('%');
-     global=global+"ooooo";
+     global=global+"ooooo"+"<br>";
      }
      
      if(line.charAt(0) == 'T') {  //Normal mqtt osd text working!!
@@ -275,7 +283,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
   if(line.charAt(0) == 'S') {
   buzzer();
   Serial.println("BUZZER");
-  global="MQTTBUZZER";
+  global=global+"MQTTBUZZER"+"<br>";
   }
   if(line.charAt(0) == 'O') {
   osdmode(line.charAt(2));
@@ -445,7 +453,7 @@ digitalWrite(SPI_SS_PIN, HIGH);
 
 Serial.println(chksum);
 Serial.println(len,DEC);
-global=global+chksum;
+global=global+chksum+"<br>";
  }  
 
 
@@ -527,7 +535,7 @@ boolean reconnect() {                                       //MQTT Connect and R
  String rxvid=WiFi.macAddress();
  String topic;
  rxvid.replace(":", ""); //remove : from mac
- global=global+rxvid;
+ global=global+rxvid+"<br>";
    if(ipa.length()>=5){
     Serial.print("New MQTT connection...");
     mqttserver=ipa;
@@ -555,7 +563,7 @@ boolean reconnect() {                                       //MQTT Connect and R
       client.subscribe(topic.c_str()); //change id new via mac
       //client.subscribe("rx/cv1/cmd_esp_target/CV_00000001"); //change id old
       
-      global=global+"MQTT Connected";
+      global=global+"MQTT Connected"+"<br>";
       //String topic = "rxcn/CV_" + rxvid;     why two times? bottom....
       //client.publish(topic.c_str(), "1");
 
@@ -598,7 +606,7 @@ StaticJsonBuffer<300> JSONbuffer;
       mqtt=1;
       Serial.print("failed, rc=");
       Serial.print(client.state());
-      global=global+"MQTT not Connected";
+      global=global+"MQTT not Connected"+"<br>";
       Serial.println(" try again in 5 seconds");
       // Wait 5 seconds before retrying
       delay(500);
