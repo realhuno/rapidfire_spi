@@ -5,6 +5,7 @@
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
 #include <ArduinoJson.h>
+#include <EEPROM.h>
 //OTA
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
@@ -16,7 +17,7 @@
  
 WebServer server(80);
 
-String mqttid="2"; //Change THIS .... MQTTID!!
+int mqttid=2; //Change THIS .... MQTTID!!
 
 #define WIFI_AP_NAME "Chorus32 LapTimer"
 
@@ -41,7 +42,7 @@ PubSubClient client(espClient);
 
 #define delaytime 70
 #define MAX_BUF 1500
-
+#define EEPROM_SIZE 32
 char buf[MAX_BUF];
 uint32_t buf_pos = 0;
 String global;
@@ -221,8 +222,10 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      //Change RotorHazard vrx id rx/cv1/cmd_esp_target/CV_246F28166140
      
      if(line.indexOf('node_number')){                      //<<command 
-     int current_nr=line.substring(12,13).toInt();
-     if(current_nr>0){
+     mqttid=line.substring(12,13).toInt();
+     if(mqttid>0){
+      EEPROM.write(0, mqttid);
+      EEPROM.commit();
      //String stringnr="5";
       client.unsubscribe("rx/cv1/cmd_node/0");
       client.unsubscribe("rx/cv1/cmd_node/1");
@@ -249,7 +252,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      topicmsg="status_variable/CV_"+rxvid;
      client.publish(topicmsg.c_str(), JSONmessageBuffer);
      
-     
+     global=global+"CHANGE TO"+String(mqttid)+"<br>";
      global=global+"CHANGE NODE_NUMBER"+"<br>";
      //mqttid=current_nr;
      //reconnect();
@@ -259,7 +262,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
    
                            //rx/cv1/cmd_esp_target/CV_00000001  
 
-     if(line.charAt(0) == '0') {             //09UMFinish%
+     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'U') {             //09UMFinish%
      Serial.println("Send text mqtt");
      String stringOne;
      stringOne="T="+line.substring(4,line.lastIndexOf('%')+3); //8
@@ -276,7 +279,7 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      global=global+stringOne+"<br>";
      }
      
-     if(line.charAt(0) == '2') {          //Push in laptimes
+     if(line.charAt(0) == '2' || line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'U') {           //Push in laptimes
      Serial.println("Send text mqtt");
      String stringOne;
 
@@ -355,6 +358,8 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
 }
 
 void setup(void) {
+  EEPROM.begin(EEPROM_SIZE);
+  mqttid=EEPROM.read(0);
   pinMode(33,OUTPUT);
     //INIT SPI 
   pinMode(SPI_SS_PIN, OUTPUT);
