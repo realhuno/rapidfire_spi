@@ -261,11 +261,11 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
       
    
                            //rx/cv1/cmd_esp_target/CV_00000001  
-
+/*
      if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'U') {             //09UMFinish%
      Serial.println("Send text mqtt");
      String stringOne;
-     stringOne="T="+line.substring(4,line.lastIndexOf('%')+3); //8
+     stringOne="T="+line.substring(4,line.lastIndexOf('%')+3); //4/->3
      //stringOne="T="+line; //8
      int len = strlen(stringOne.c_str());
      String fill;
@@ -278,27 +278,54 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      text(stringOne);            //not working
      global=global+stringOne+"<br>";
      }
-     
-     if(line.charAt(0) == '2' || line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'U') {           //Push in laptimes
+  */   
+     if(line.charAt(0) == '0' && line.charAt(1) == '9' && line.charAt(2) == 'U') {           //Push in laptimes
      Serial.println("Send text mqtt");
      String stringOne;
+      int cut;
+     
+     stringOne="T="+line.substring(4,line.lastIndexOf('%')); //4
+  
+    
+     global=global+"length"+stringOne.length();
+ 
+     
 
-     stringOne="T="+line.substring(5,line.lastIndexOf('%')+3); //8
      int len = strlen(stringOne.c_str());
+
+     
      //fill with spaces
+     stringOne.replace("%", " "); //replace % with space
+     stringOne.replace("|", " "); //replace % with space
      String fill;
      int i;
-     for (int i = len; i < 24; i++){
+     for (int i = len; i < 26; i++){
      fill=fill+" ";
      }
      stringOne=stringOne+fill;
-     stringOne.replace("%", " "); //replace % with space
-
+     global=global+"len"+len+"<br>";
+    /*
+     if(stringOne.charAt(2)=='R' || stringOne.charAt(2)=='G' || stringOne.charAt(2)=='-' && int(len)<=16){
+     global=global+"no cut!!!";
+     }else{
      
+
+     }
+     */
+      if(len>26){
+      
+      stringOne.remove(2, 3); 
+      stringOne.remove(stringOne.lastIndexOf('/'),(len-stringOne.lastIndexOf('/')));   
+     }else{
+     
+     }
      text(stringOne);            //not working
+     /*
      global=global+"ooooo";
+     global=global+stringOne+"<br>";
      global=global+line.lastIndexOf('%');
      global=global+"ooooo"+"<br>";
+     */
      }
      
      if(line.charAt(0) == 'T') {  //Normal mqtt osd text working!!
