@@ -4,9 +4,20 @@ The API Documentation important Read this!!
 https://www.immersionrc.com/fpv-products/rapidfire/
 
 Aktivate mqtt via webpage!
-
+i know cleanup the code because of example codes... ;-)
 OSD Text working only with firmware 1.2.5! 
 update OSD text with http://esp32ip/setLED?LEDstate=T=L1:00:12:33
+
+Change OSD
+O=
+Change Band
+B=
+Change Channel
+C=
+OSD Usertext
+T=
+Beeper
+S>
 
 [x]MQTT<br>
 [x]Webrequest<br>
@@ -17,7 +28,7 @@ update OSD text with http://esp32ip/setLED?LEDstate=T=L1:00:12:33
 [ ]3D Print Case<br>
 
 
-i know cleanup the code because of example codes... ;-)
+
 
 The Hardware looks like
 
