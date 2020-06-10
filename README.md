@@ -8,16 +8,16 @@ i know cleanup the code because of example codes... ;-)
 OSD Text working only with firmware 1.2.5! 
 update OSD text with http://esp32ip/setLED?LEDstate=T=L1:00:12:33
 
-Change OSD
-O=
-Change Band
-B=
-Change Channel
-C=
-OSD Usertext
-T=
-Beeper
-S>
+Change OSD<br>
+O=<br>
+Change Band<br>
+B=<br>
+Change Channel<br>
+C=<br>
+OSD Usertext<br>
+T=<br>
+Beeper<br>
+S><br>
 
 [x]MQTT<br>
 [x]Webrequest<br>
