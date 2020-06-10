@@ -17,7 +17,7 @@
  
 WebServer server(80);
 
-int mqttid=2; //Change THIS .... MQTTID!!
+int mqttid; //Change THIS .... MQTTID!!
 
 #define WIFI_AP_NAME "Chorus32 LapTimer"
 
@@ -467,7 +467,7 @@ Serial.println("OTA started");
  delay(500);
  digitalWrite(4,LOW);
  delay(500);
-
+ global=global+"node_number: "+mqttid+"<br>";
 }
 
 
@@ -671,8 +671,9 @@ StaticJsonBuffer<300> JSONbuffer;
  
  
 
-     JSONencoder["node_number"] = "1";
+     JSONencoder["node_number"] = String(mqttid);
      topic = "rxcn/CV_" + rxvid;
+     global=global+topic+"<br>";
      client.publish(topic.c_str(), "1");
      delay(500);
      topic = "status_static/CV_" + rxvid;
@@ -686,7 +687,39 @@ StaticJsonBuffer<300> JSONbuffer;
      global=global+topic+"<br>";
      client.publish(topic.c_str(), JSONmessageBuffer2);
 //rx/cv1/cmd_node/1
- 
+ //set stored NODE_NUMBER
+
+
+      String topicmsg;
+      client.unsubscribe("rx/cv1/cmd_node/0");
+      client.unsubscribe("rx/cv1/cmd_node/1");
+      client.unsubscribe("rx/cv1/cmd_node/2");
+      client.unsubscribe("rx/cv1/cmd_node/3");
+      client.unsubscribe("rx/cv1/cmd_node/4");
+      client.unsubscribe("rx/cv1/cmd_node/5");
+      client.unsubscribe("rx/cv1/cmd_node/6");
+      client.unsubscribe("rx/cv1/cmd_node/7");
+      client.unsubscribe("rx/cv1/cmd_node/8");
+      topicmsg = "rx/cv1/cmd_node/"+String(mqttid);                                            
+        global=global+"TOPIC: "+String(topicmsg)+"<br>";
+  
+                       
+      client.subscribe(topicmsg.c_str());
+     JSONencoder["node_number"] = mqttid;
+
+     JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+     
+     
+     topicmsg="status_variable/CV_"+rxvid;
+        global=global+"TOPIC: "+String(topicmsg)+"<br>";
+  
+     client.publish(topicmsg.c_str(), JSONmessageBuffer);
+     
+   
+
+
+
+ //SET stored NODE_NUMBER
     } else {
       mqtt=1;
       Serial.print("failed, rc=");
@@ -700,7 +733,9 @@ StaticJsonBuffer<300> JSONbuffer;
 }
 void loop(void) {
   server.handleClient();
+
  if (!client.connected() && mqtt==1) {
+  
     long now = millis();
     if (now - lastReconnectAttempt > 5000) { // Try to reconnect.
       lastReconnectAttempt = now;
