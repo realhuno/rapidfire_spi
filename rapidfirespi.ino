@@ -220,12 +220,18 @@ void callback(char* topic, byte* message, unsigned int length) {             //M
      }
      //09BC7%    09B=command change freq..  c=raceband channel 7   
      //Change RotorHazard vrx id rx/cv1/cmd_esp_target/CV_246F28166140
-     
-     if(line.indexOf('node_number')){                      //<<command 
+    
+     global=global+"TOPIC:"+topic+"<br>";
+     //if(line.indexOf('node_number')){                      //<<command <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< change node number baustelle
+     String checkstring="rx/cv1/cmd_esp_target/CV_"+rxvid;
+     if(String(topic)==checkstring && line.charAt(0) == 'n'){ 
+     global=global+"MSG:"+line+"<br>";
      mqttid=line.substring(12,13).toInt();
-     if(mqttid>0){
-      EEPROM.write(0, mqttid);
-      EEPROM.commit();
+     global=global+"Request change node_number to:"+mqttid+"<br>";
+     EEPROM.write(0, mqttid);
+     EEPROM.commit();
+     if(mqttid>=0){
+
      //String stringnr="5";
       client.unsubscribe("rx/cv1/cmd_node/0");
       client.unsubscribe("rx/cv1/cmd_node/1");
@@ -612,6 +618,7 @@ Serial.println(i-48);
 }
 boolean reconnect() {                                       //MQTT Connect and Reconnect
   // Loop until we're reconnected
+  mqttid=EEPROM.read(0);
  mqtt=1;
  ipa=server.arg("ip");
  String rxvid=WiFi.macAddress();
@@ -671,7 +678,7 @@ StaticJsonBuffer<300> JSONbuffer;
  
  
 
-     JSONencoder["node_number"] = String(mqttid);
+     JSONencoder["node_number"] = mqttid;
      topic = "rxcn/CV_" + rxvid;
      global=global+topic+"<br>";
      client.publish(topic.c_str(), "1");
@@ -705,7 +712,7 @@ StaticJsonBuffer<300> JSONbuffer;
   
                        
       client.subscribe(topicmsg.c_str());
-     JSONencoder["node_number"] = mqttid;
+     JSONencoder["node_number"] = mqttid;  //         mqttid );<<<<<<<<<<<<<<<
 
      JSONencoder.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
      
