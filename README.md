@@ -29,9 +29,12 @@ S><br>
 
 <img src=https://github.com/realhuno/rapidfire_spi/blob/master/5.PNG><br>
 
-
+Schematic
+<img src=https://github.com/realhuno/rapidfire_spi/blob/master/schematic.png><br>
 
 The Hardware looks like
+
+
 
 <img src=https://github.com/realhuno/rapidfire_spi/blob/master/1.jpg><br>
 <img src=https://github.com/realhuno/rapidfire_spi/blob/master/2.jpg><br>
