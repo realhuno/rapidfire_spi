@@ -25,7 +25,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <br>
    <button type="button" onclick="sendesp32('S>')">Beep</button>
    <button type="button" onclick="sendesp32('T=HelloWorld')">Hello</button>
-   <input type="text" id="ip" value="10.0.0.50">
+   <input type="text" id="ip" value="192.168.0.90">
    <button type="button" onclick="reconnect('true')">MQTT Connect!!</button>
    <button type="button" onclick="led('on')">LED ON!</button>
    <button type="button" onclick="led('off')">LED OFF!</button>
