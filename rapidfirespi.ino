@@ -401,11 +401,12 @@ void setup(void) {
   Serial.begin(115200);
 
   //WiFi.begin(WIFI_AP_NAME);
-  
+    wifiMulti.addAP("RotorHazard", "12345678");
     wifiMulti.addAP("Chorus32 LapTimer", "");
     wifiMulti.addAP("Laptimer", "laptimer");
     wifiMulti.addAP("A1-7FB051", "hainz2015");
-
+    wifiMulti.addAP("espnetwork3", "espnetwork3");
+    
     Serial.println("Connecting Wifi...");
    /*
     if(wifiMulti.run() == WL_CONNECTED) {
