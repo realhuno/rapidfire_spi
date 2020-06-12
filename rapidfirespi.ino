@@ -468,6 +468,10 @@ Serial.println("OTA started");
   server.begin();                  //Start server
   Serial.println("HTTP server started");
 
+
+
+
+
   //setup done... blink led
  pinMode(4,OUTPUT);
  digitalWrite(4,HIGH);
@@ -475,6 +479,9 @@ Serial.println("OTA started");
  digitalWrite(4,LOW);
  delay(500);
  global=global+"node_number: "+mqttid+"<br>";
+ global=global+"Try boot up mqtt connect...<br>";
+ 
+ reconnect();
 }
 
 
@@ -627,10 +634,31 @@ boolean reconnect() {                                       //MQTT Connect and R
  rxvid.replace(":", ""); //remove : from mac
  global=global+rxvid+"<br>";
    if(ipa.length()>=5){
-    Serial.print("New MQTT connection...");
+    Serial.print("Manual New MQTT connection...");
+    global=global+"Manual MQTT Connection...";
     mqttserver=ipa;
    }else{
-    Serial.print("MQTT reconnect...");
+   //multiple connection mqtt servers
+
+    if(WiFi.SSID()=="Chorus32 LapTimer"){
+    mqttserver="192.168.4.1";
+    
+    }
+
+
+    if(WiFi.SSID()=="Laptimer"){
+    mqttserver="192.168.0.141";
+    }
+
+    if(WiFi.SSID()=="A1-7FB051"){
+    mqttserver="10.0.0.54";
+    }
+
+    
+    
+    
+    Serial.print("Automatic MQTT reconnect...");
+    global=global+"Automatic MQTT reconnection..."+String(mqttserver)+"<br>";
    }
    
    
@@ -729,7 +757,7 @@ StaticJsonBuffer<300> JSONbuffer;
 
  //SET stored NODE_NUMBER
     } else {
-      mqtt=1;
+      mqtt=0;                  //Test with 0!!
       Serial.print("failed, rc=");
       Serial.print(client.state());
       global=global+"MQTT not Connected"+"<br>";
